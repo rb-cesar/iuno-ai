@@ -1,5 +1,14 @@
 import os
 
+# Carrega variáveis do arquivo .env (se existir)
+try:  # pragma: no cover
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    # Se python-dotenv não estiver instalado, seguimos apenas com o ambiente do sistema.
+    pass
+
 from iuno.core.orchestrator import Orchestrator
 from iuno.llm.ollama_client import OllamaClient
 from iuno.memory.json_memory import JsonMemory

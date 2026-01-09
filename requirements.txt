@@ -1,3 +1,4 @@
 requests
 pyttsx3
 SpeechRecognition
+python-dotenv

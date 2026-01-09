@@ -24,6 +24,26 @@ py -m venv .venv
 py -m pip install -r requirements.txt
 ```
 
+## Configuração por arquivo `.env` (recomendado)
+
+Você pode colocar suas configs num arquivo `.env` na raiz do projeto.
+
+1) Crie o `.env` a partir do exemplo:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+2) Edite o arquivo `.env` e ajuste os valores (ex.: `IUNO_VOICE_OUT=true`).
+
+3) Rode normalmente:
+
+```powershell
+py main.py
+```
+
+> O app carrega automaticamente o `.env` ao iniciar (via `python-dotenv`).
+
 ## Configuração rápida (variáveis de ambiente)
 
 | Variável | Padrão | O que faz |
