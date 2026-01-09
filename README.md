@@ -50,8 +50,11 @@ py main.py
 |---|---:|---|
 | `IUNO_STREAM` | `true` | Ativa/desativa streaming da resposta no terminal |
 | `IUNO_VOICE_IN` | `false` | Ativa entrada por voz (STT) |
+| `IUNO_VOICE_IN_MODE` | `file` | `file`=WAV por caminho, `mic`=microfone direto |
 | `IUNO_VOICE_OUT` | `false` | Ativa saída por voz (TTS) |
 | `IUNO_STT_LANG` | `pt-BR` | Idioma do STT (ex.: `en-US`) |
+| `IUNO_MIC_SAMPLE_RATE` | `16000` | Sample rate de gravação do mic |
+| `IUNO_MIC_CHANNELS` | `1` | Canais do mic (1=mono) |
 | `IUNO_TTS_RATE` | vazio | Velocidade do TTS (ex.: `180`) |
 | `IUNO_TTS_VOLUME` | vazio | Volume do TTS (0.0 a 1.0) |
 | `IUNO_TTS_VOICE` | vazio | Nome/id parcial da voz (depende do Windows) |
@@ -107,7 +110,7 @@ py main.py
 O TTS atual é **offline** e usa `pyttsx3` (no Windows tipicamente via SAPI5).
 
 ```powershell
-$env:IUNO_VOICE_OUT="true"
+# pelo .env: IUNO_VOICE_OUT=true
 py main.py
 ```
 
@@ -123,48 +126,58 @@ py main.py
 
 ### STT (entrada por voz)
 
-O STT atual foi implementado no modo mais robusto para Windows: **transcrição de um arquivo WAV**.
+O STT atual usa a biblioteca `SpeechRecognition` com o serviço **Google Web Speech**.
 
-Quando está habilitado, em vez de digitar a mensagem, você informa o caminho de um `.wav`.
+- Requer internet
+- O áudio é enviado para transcrição
+
+Você tem dois modos de entrada:
+
+#### Modo 1: arquivo WAV (padrão)
 
 ```powershell
-$env:IUNO_VOICE_IN="true"
+# pelo .env:
+# IUNO_VOICE_IN=true
+# IUNO_VOICE_IN_MODE=file
 py main.py
 ```
 
-Você verá o prompt:
+Nessa opção você informa o caminho de um `.wav`.
 
-- `Áudio (WAV) ou 'sair':`
+#### Modo 2: microfone direto (push-to-talk)
 
-Dicas:
-- Você pode **arrastar e soltar** o arquivo no terminal para colar o caminho.
-- Idioma padrão: `pt-BR`. Para mudar:
+Este modo grava do microfone e gera um WAV temporário automaticamente.
+
+1) Instale a dependência opcional:
 
 ```powershell
-$env:IUNO_VOICE_IN="true"
-$env:IUNO_STT_LANG="en-US"
+py -m pip install sounddevice
+```
+
+2) No `.env`, habilite:
+
+- `IUNO_VOICE_IN=true`
+- `IUNO_VOICE_IN_MODE=mic`
+
+3) Rode:
+
+```powershell
 py main.py
 ```
 
-#### Privacidade / Internet
+No terminal:
+- Pressione **ENTER** para começar a gravar
+- Pressione **ENTER** novamente para parar
 
-O STT atual usa a biblioteca `SpeechRecognition` com o serviço **Google Web Speech**, então **requer internet** e o áudio é enviado para transcrição.
-
-Se você precisar de STT 100% offline, dá pra evoluir o projeto para usar um modelo local (ex.: Whisper via `faster-whisper`).
-
-#### Como gerar um WAV rapidamente
-
-Algumas opções:
-- Use um gravador qualquer e exporte para WAV (PCM é o mais seguro).
-- Se você já tem um arquivo em outro formato (mp3/m4a), converta para wav.
-
-> Se você quiser, eu posso adicionar um modo de **microfone (push-to-talk)** para gravar direto do terminal e gerar o WAV automaticamente.
+> Se o `sounddevice` não estiver instalado ou der erro de dispositivo, o modo microfone não vai funcionar. Nesse caso, use `IUNO_VOICE_IN_MODE=file` como fallback.
 
 ### STT + TTS juntos
 
 ```powershell
-$env:IUNO_VOICE_IN="true"
-$env:IUNO_VOICE_OUT="true"
+# no .env:
+# IUNO_VOICE_IN=true
+# IUNO_VOICE_IN_MODE=mic
+# IUNO_VOICE_OUT=true
 py main.py
 ```
 

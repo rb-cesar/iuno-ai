@@ -29,10 +29,17 @@ def main() -> None:
 
     stream = _env_flag("IUNO_STREAM", True)
 
+    voice_in_mode = (os.getenv("IUNO_VOICE_IN_MODE", "file") or "file").strip().lower()
+    if voice_in_mode not in {"file", "mic"}:
+        voice_in_mode = "file"
+
     voice_cfg = VoiceConfig(
         enable_voice_in=_env_flag("IUNO_VOICE_IN", False),
         enable_voice_out=_env_flag("IUNO_VOICE_OUT", False),
         stt_language=os.getenv("IUNO_STT_LANG", "pt-BR"),
+        voice_in_mode=voice_in_mode,  # file|mic
+        mic_sample_rate=int(os.getenv("IUNO_MIC_SAMPLE_RATE", "16000")),
+        mic_channels=int(os.getenv("IUNO_MIC_CHANNELS", "1")),
         tts_rate=int(os.getenv("IUNO_TTS_RATE", "0")) or None,
         tts_volume=float(os.getenv("IUNO_TTS_VOLUME", "0")) or None,
         tts_voice=os.getenv("IUNO_TTS_VOICE") or None,
@@ -43,6 +50,19 @@ def main() -> None:
         from iuno.voice.stt_speech_recognition import SpeechRecognitionSTT
 
         stt = SpeechRecognitionSTT()
+
+    recorder = None
+    if voice_cfg.enable_voice_in and voice_cfg.voice_in_mode == "mic":
+        # Dependência opcional. Se não estiver instalada, o Orchestrator avisará.
+        try:
+            from iuno.voice.mic_sounddevice import SoundDeviceRecorder
+
+            recorder = SoundDeviceRecorder(
+                sample_rate=voice_cfg.mic_sample_rate,
+                channels=voice_cfg.mic_channels,
+            )
+        except Exception:
+            recorder = None
 
     tts = None
     if voice_cfg.enable_voice_out:
@@ -57,6 +77,7 @@ def main() -> None:
         voice=voice_cfg,
         stt=stt,
         tts=tts,
+        recorder=recorder,
     )
     orchestrator.run_cli()
 

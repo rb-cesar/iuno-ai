@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Literal
 
 
 class VoiceError(RuntimeError):
@@ -23,6 +23,13 @@ class TextToSpeech(ABC):
         raise NotImplementedError
 
 
+class AudioRecorder(ABC):
+    @abstractmethod
+    def record_wav(self) -> str:
+        """Grava áudio e retorna o caminho de um arquivo WAV gerado."""
+        raise NotImplementedError
+
+
 @dataclass(frozen=True)
 class VoiceConfig:
     enable_voice_in: bool = False
@@ -30,6 +37,11 @@ class VoiceConfig:
 
     # input
     stt_language: str = "pt-BR"
+    voice_in_mode: Literal["file", "mic"] = "file"
+
+    # mic recording (apenas quando voice_in_mode == "mic")
+    mic_sample_rate: int = 16000
+    mic_channels: int = 1
 
     # output
     tts_rate: Optional[int] = None
