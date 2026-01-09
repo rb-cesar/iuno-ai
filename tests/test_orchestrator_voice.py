@@ -107,3 +107,17 @@ def test_voice_out_calls_tts(monkeypatch):
 
     # Deve falar a resposta final completa
     assert tts.spoken == ["ok"]
+
+
+def test_voice_out_speaks_every_turn(monkeypatch):
+    # Dois turnos antes de sair
+    inputs = iter(["oi", "oi de novo", "sair"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    tts = _FakeTTS()
+    voice = VoiceConfig(enable_voice_in=False, enable_voice_out=True)
+
+    orch = Orchestrator(_FakeLLM(), _FakeMemory(), stream=False, voice=voice, stt=None, tts=tts)
+    orch.run_cli()
+
+    assert tts.spoken == ["ok", "ok"]
