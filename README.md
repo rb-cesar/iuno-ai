@@ -55,6 +55,8 @@ py main.py
 | `IUNO_STT_LANG` | `pt-BR` | Idioma do STT (ex.: `en-US`) |
 | `IUNO_MIC_SAMPLE_RATE` | `16000` | Sample rate de gravação do mic |
 | `IUNO_MIC_CHANNELS` | `1` | Canais do mic (1=mono) |
+| `IUNO_AUDIO_DIR` | `data/audio` | Pasta para salvar WAVs gravados no modo mic |
+| `IUNO_CLEANUP_AUDIO_FILES` | `true` | Apaga WAVs gravados automaticamente após transcrever/ao encerrar |
 | `IUNO_TTS_RATE` | vazio | Velocidade do TTS (ex.: `180`) |
 | `IUNO_TTS_VOLUME` | vazio | Volume do TTS (0.0 a 1.0) |
 | `IUNO_TTS_VOICE` | vazio | Nome/id parcial da voz (depende do Windows) |
@@ -146,7 +148,15 @@ Nessa opção você informa o caminho de um `.wav`.
 
 #### Modo 2: microfone direto (push-to-talk)
 
-Este modo grava do microfone e gera um WAV temporário automaticamente.
+Este modo grava do microfone e gera um WAV automaticamente.
+
+- Por padrão ele grava em `data/audio/` **dentro do projeto**
+- Por padrão ele **apaga o WAV** assim que transcrever (para não acumular arquivos)
+
+Você pode controlar isso por `.env`:
+
+- `IUNO_AUDIO_DIR` (caminho da pasta de saída)
+- `IUNO_CLEANUP_AUDIO_FILES` (`true`/`false`)
 
 1) Instale a dependência opcional:
 
