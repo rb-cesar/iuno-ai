@@ -1,6 +1,9 @@
 # Iuno AI (CLI) — Guia de Uso
 
-Assistente em modo texto com memória simples e suporte a **respostas em tempo real (streaming)** via Ollama.
+Assistente em modo texto com memória simples e suporte a **respostas em tempo real (streaming)** via Ollama, com opções de **voz**:
+
+- **STT (Speech-to-Text)**: transcrição de áudio → texto
+- **TTS (Text-to-Speech)**: falar as respostas em voz alta
 
 ## Requisitos
 
@@ -21,6 +24,18 @@ py -m venv .venv
 py -m pip install -r requirements.txt
 ```
 
+## Configuração rápida (variáveis de ambiente)
+
+| Variável | Padrão | O que faz |
+|---|---:|---|
+| `IUNO_STREAM` | `true` | Ativa/desativa streaming da resposta no terminal |
+| `IUNO_VOICE_IN` | `false` | Ativa entrada por voz (STT) |
+| `IUNO_VOICE_OUT` | `false` | Ativa saída por voz (TTS) |
+| `IUNO_STT_LANG` | `pt-BR` | Idioma do STT (ex.: `en-US`) |
+| `IUNO_TTS_RATE` | vazio | Velocidade do TTS (ex.: `180`) |
+| `IUNO_TTS_VOLUME` | vazio | Volume do TTS (0.0 a 1.0) |
+| `IUNO_TTS_VOICE` | vazio | Nome/id parcial da voz (depende do Windows) |
+
 ## Preparando o Ollama
 
 1. Inicie o Ollama (normalmente ele já fica rodando em background após instalar).
@@ -32,7 +47,7 @@ O modelo padrão está em `main.py`:
 
 Se você não tiver esse modelo, troque por um que você tenha instalado.
 
-## Executando
+## Executando (modo texto)
 
 ```powershell
 py main.py
@@ -53,8 +68,6 @@ Por padrão, o streaming fica **ligado**. Nesse modo, a Iuno imprime a resposta 
 
 ### Desligar streaming
 
-Use a variável de ambiente `IUNO_STREAM=false`.
-
 ```powershell
 $env:IUNO_STREAM="false"
 py main.py
@@ -69,36 +82,30 @@ py main.py
 
 ## Voz (STT e TTS)
 
-Este projeto suporta:
+### TTS (falar as respostas)
 
-- **Speech-to-Text (STT)**: transcrição de **arquivo WAV** (mais robusto no Windows)
-- **Text-to-Speech (TTS)**: fala offline via `pyttsx3` (Windows geralmente usa SAPI5)
-
-### Habilitar TTS (falar as respostas)
+O TTS atual é **offline** e usa `pyttsx3` (no Windows tipicamente via SAPI5).
 
 ```powershell
 $env:IUNO_VOICE_OUT="true"
 py main.py
 ```
 
-Opcionalmente, você pode ajustar:
-
-- `IUNO_TTS_RATE` (ex.: `180`)
-- `IUNO_TTS_VOLUME` (0.0 a 1.0)
-- `IUNO_TTS_VOICE` (id/nome parcial da voz; depende do Windows)
-
-Exemplo:
+Configurações opcionais:
 
 ```powershell
 $env:IUNO_VOICE_OUT="true"
 $env:IUNO_TTS_RATE="180"
 $env:IUNO_TTS_VOLUME="0.9"
+# $env:IUNO_TTS_VOICE="nome-parcial-ou-id"  # opcional
 py main.py
 ```
 
-### Habilitar STT (entrada por voz via arquivo WAV)
+### STT (entrada por voz)
 
-Quando o STT está ligado, em vez de digitar texto, você informa o **caminho de um WAV** e a Iuno transcreve.
+O STT atual foi implementado no modo mais robusto para Windows: **transcrição de um arquivo WAV**.
+
+Quando está habilitado, em vez de digitar a mensagem, você informa o caminho de um `.wav`.
 
 ```powershell
 $env:IUNO_VOICE_IN="true"
@@ -119,7 +126,27 @@ $env:IUNO_STT_LANG="en-US"
 py main.py
 ```
 
-> Observação: o STT atual usa `SpeechRecognition` + "Google Web Speech" (requer internet).
+#### Privacidade / Internet
+
+O STT atual usa a biblioteca `SpeechRecognition` com o serviço **Google Web Speech**, então **requer internet** e o áudio é enviado para transcrição.
+
+Se você precisar de STT 100% offline, dá pra evoluir o projeto para usar um modelo local (ex.: Whisper via `faster-whisper`).
+
+#### Como gerar um WAV rapidamente
+
+Algumas opções:
+- Use um gravador qualquer e exporte para WAV (PCM é o mais seguro).
+- Se você já tem um arquivo em outro formato (mp3/m4a), converta para wav.
+
+> Se você quiser, eu posso adicionar um modo de **microfone (push-to-talk)** para gravar direto do terminal e gerar o WAV automaticamente.
+
+### STT + TTS juntos
+
+```powershell
+$env:IUNO_VOICE_IN="true"
+$env:IUNO_VOICE_OUT="true"
+py main.py
+```
 
 ## Memória
 
@@ -161,8 +188,6 @@ Se aparecer algo como erro de conexão:
 - O STT atual requer internet (serviço Google Web Speech)
 
 ## Rodando testes
-
-Este repositório inclui testes unitários para o streaming e para a camada de voz.
 
 ```powershell
 py -m pip install pytest
