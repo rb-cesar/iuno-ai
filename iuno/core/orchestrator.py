@@ -6,6 +6,7 @@ from iuno.llm.base import LLMClient
 from iuno.memory.memory_base import MemoryStore
 from iuno.memory.state import ensure_default_state, add_long_term_fact
 from iuno.persona.prompts import SYSTEM_PROMPT
+from iuno.voice.base import SpeechToText, TextToSpeech, VoiceConfig
 
 
 class Orchestrator:
@@ -20,10 +21,17 @@ class Orchestrator:
             llm: LLMClient,
             memory: MemoryStore,
             stream: bool = True,
+            voice: Optional[VoiceConfig] = None,
+            stt: Optional[SpeechToText] = None,
+            tts: Optional[TextToSpeech] = None,
     ):
         self.llm = llm
         self.memory_store = memory
         self.stream = stream
+
+        self.voice = voice or VoiceConfig()
+        self.stt = stt
+        self.tts = tts
 
         raw_state = self.memory_store.load()
         self.state = ensure_default_state(raw_state)
@@ -139,14 +147,21 @@ class Orchestrator:
     # ---------- LOOP PRINCIPAL (CLI) ----------
 
     def run_cli(self) -> None:
-        """
-        Loop de chat via terminal.
-        """
+        """Loop de chat via terminal."""
         print("Iuno iniciada (modo texto). Digite 'sair' para encerrar.\n")
+        if self.voice.enable_voice_in:
+            print("[VOZ] Entrada por voz habilitada. Informe o caminho de um arquivo WAV para transcrever.")
+            print("[VOZ] Dica: você pode arrastar/soltar o arquivo no terminal para colar o caminho.\n")
 
         while True:
             try:
-                user_text = input("Você: ").strip()
+                if self.voice.enable_voice_in:
+                    user_audio_path = input("Áudio (WAV) ou 'sair': ").strip().strip('"')
+                    if not user_audio_path:
+                        continue
+                    user_text = user_audio_path
+                else:
+                    user_text = input("Você: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("\n\nEncerrando...")
                 self.memory_store.save(self.state)
@@ -159,6 +174,20 @@ class Orchestrator:
                 print("Encerrando...")
                 self.memory_store.save(self.state)
                 break
+
+            # Se estiver em modo voz, primeiro transcreve o arquivo.
+            if self.voice.enable_voice_in:
+                if not self.stt:
+                    print("[VOZ][ERRO] STT não configurado.")
+                    continue
+                try:
+                    transcript = self.stt.transcribe_file(user_text, language=self.voice.stt_language)
+                except Exception as e:
+                    print(f"[VOZ][ERRO] Falha ao transcrever: {e}")
+                    continue
+
+                user_text = transcript
+                print(f"Você (transcrito): {user_text}")
 
             # Memória de curto prazo
             self._add_message("user", user_text)
@@ -188,8 +217,13 @@ class Orchestrator:
                 continue
 
             self._add_message("assistant", response)
-
             self.turn_count += 1
+
+            if self.voice.enable_voice_out and self.tts:
+                try:
+                    self.tts.speak(response)
+                except Exception as e:
+                    print(f"[VOZ][ERRO] Falha no TTS: {e}")
 
             # Persiste memória de longo prazo
             self.memory_store.save(self.state)

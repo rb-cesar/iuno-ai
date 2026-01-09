@@ -67,6 +67,60 @@ $env:IUNO_STREAM="true"
 py main.py
 ```
 
+## Voz (STT e TTS)
+
+Este projeto suporta:
+
+- **Speech-to-Text (STT)**: transcrição de **arquivo WAV** (mais robusto no Windows)
+- **Text-to-Speech (TTS)**: fala offline via `pyttsx3` (Windows geralmente usa SAPI5)
+
+### Habilitar TTS (falar as respostas)
+
+```powershell
+$env:IUNO_VOICE_OUT="true"
+py main.py
+```
+
+Opcionalmente, você pode ajustar:
+
+- `IUNO_TTS_RATE` (ex.: `180`)
+- `IUNO_TTS_VOLUME` (0.0 a 1.0)
+- `IUNO_TTS_VOICE` (id/nome parcial da voz; depende do Windows)
+
+Exemplo:
+
+```powershell
+$env:IUNO_VOICE_OUT="true"
+$env:IUNO_TTS_RATE="180"
+$env:IUNO_TTS_VOLUME="0.9"
+py main.py
+```
+
+### Habilitar STT (entrada por voz via arquivo WAV)
+
+Quando o STT está ligado, em vez de digitar texto, você informa o **caminho de um WAV** e a Iuno transcreve.
+
+```powershell
+$env:IUNO_VOICE_IN="true"
+py main.py
+```
+
+Você verá o prompt:
+
+- `Áudio (WAV) ou 'sair':`
+
+Dicas:
+- Você pode **arrastar e soltar** o arquivo no terminal para colar o caminho.
+- Idioma padrão: `pt-BR`. Para mudar:
+
+```powershell
+$env:IUNO_VOICE_IN="true"
+$env:IUNO_STT_LANG="en-US"
+py main.py
+```
+
+> Observação: o STT atual usa `SpeechRecognition` + "Google Web Speech" (requer internet).
+
 ## Memória
 
 A Iuno mantém um estado simples (perfil do usuário, preferências e fatos) e persiste via `JsonMemory`.
@@ -94,12 +148,23 @@ Se aparecer algo como erro de conexão:
 - Confirme que `IUNO_STREAM` não está definido como `false`
 - Alguns terminais podem bufferizar saída; este projeto usa `flush=True` para reduzir isso
 
+### TTS não fala
+
+- Confirme `IUNO_VOICE_OUT=true`
+- Garanta que o Windows está com um dispositivo de saída de áudio ativo
+- Se estiver em um ambiente sem áudio (RDP/VM), o TTS pode não tocar
+
+### STT não transcreve
+
+- Confirme `IUNO_VOICE_IN=true`
+- Use um WAV suportado (PCM é o mais seguro)
+- O STT atual requer internet (serviço Google Web Speech)
+
 ## Rodando testes
 
-Este repositório inclui testes unitários para o streaming.
+Este repositório inclui testes unitários para o streaming e para a camada de voz.
 
 ```powershell
 py -m pip install pytest
 py -m pytest -q
 ```
-
