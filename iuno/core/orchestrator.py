@@ -1,5 +1,4 @@
 import re
-import sys
 from typing import List, Dict, Optional
 
 from iuno.llm.base import LLMClient
@@ -151,8 +150,19 @@ class Orchestrator:
     def run_cli(self) -> None:
         """Loop de chat via terminal."""
         print("Iuno iniciada (modo texto). Digite 'sair' para encerrar.\n")
+
+        # Se o usuário pediu mic mas não há recorder, cai para modo file.
+        effective_voice_in_mode = self.voice.voice_in_mode
+        if self.voice.enable_voice_in and effective_voice_in_mode == "mic" and not self.recorder:
+            print(
+                "[VOZ][AVISO] Modo microfone solicitado, mas o gravador não está configurado.\n"
+                "[VOZ][AVISO] Vou usar o modo por arquivo WAV (IUNO_VOICE_IN_MODE=file).\n"
+                "[VOZ][DICA] Para usar microfone direto, instale: pip install sounddevice\n"
+            )
+            effective_voice_in_mode = "file"
+
         if self.voice.enable_voice_in:
-            if self.voice.voice_in_mode == "mic":
+            if effective_voice_in_mode == "mic":
                 print("[VOZ] Entrada por microfone habilitada (push-to-talk via ENTER).\n")
             else:
                 print("[VOZ] Entrada por voz habilitada. Informe o caminho de um arquivo WAV para transcrever.")
@@ -161,7 +171,7 @@ class Orchestrator:
         while True:
             try:
                 if self.voice.enable_voice_in:
-                    if self.voice.voice_in_mode == "mic":
+                    if effective_voice_in_mode == "mic":
                         cmd = input("(ENTER para gravar | 'sair'): ").strip()
                         if not cmd:
                             user_text = "__MIC__"
@@ -194,7 +204,8 @@ class Orchestrator:
                     continue
 
                 audio_path = None
-                if self.voice.voice_in_mode == "mic":
+                if effective_voice_in_mode == "mic":
+                    # Aqui o recorder existe (pois normalizei acima), mas mantenho a checagem por segurança.
                     if not self.recorder:
                         print("[VOZ][ERRO] Gravador de microfone não configurado.")
                         continue
