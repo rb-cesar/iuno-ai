@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 
 from iuno.llm.base import LLMClient
 from iuno.memory.memory_base import MemoryStore
-from iuno.memory.state import ensure_default_state, add_long_term_fact
+from iuno.memory.state import ensure_default_state, add_long_term_fact, touch_long_term_facts
 from iuno.persona.prompts import SYSTEM_PROMPT
 from iuno.voice.base import SpeechToText, TextToSpeech, VoiceConfig, AudioRecorder
 
@@ -68,11 +68,7 @@ class Orchestrator:
 
     # ---------- MEMÓRIA AUTOMÁTICA (OPÇÃO A + B) ----------
 
-    def _update_memory_from_user_message(
-            self,
-            text: str,
-            assistant_reply: Optional[str] = None,
-    ) -> None:
+    def _update_memory_from_user_message(self, text: str) -> None:
         """
         Extrai fatos simples do texto do usuário e grava na memória de longo prazo.
         Regras simples por regex:
@@ -162,6 +158,72 @@ class Orchestrator:
 
         # Aqui você pode acrescentar outras regras (cidade, horário de estudo, etc.)
 
+    def _select_relevant_facts(self, limit: int = 5) -> List[Dict[str, str]]:
+        facts: List[Dict[str, str]] = list(self.state.get("long_term_facts", []))
+        if not facts:
+            return []
+
+        def sort_key(fact: Dict[str, str]) -> tuple:
+            importance = int(fact.get("importance") or 0)
+            last_accessed = fact.get("last_accessed")
+            created_at = fact.get("created_at")
+            return (-importance, last_accessed or "", created_at or "")
+
+        facts.sort(key=sort_key)
+        selected = facts[:limit]
+        touch_long_term_facts(selected)
+        return selected
+
+    def _build_memory_context(self) -> Optional[str]:
+        profile = self.state.get("user_profile", {})
+        preferences = self.state.get("preferences", {})
+        projects = self.state.get("projects", [])
+        facts = self._select_relevant_facts()
+
+        lines: List[str] = []
+        name = profile.get("name")
+        age = profile.get("age")
+        location = profile.get("location")
+        if any([name, age, location]):
+            lines.append("Perfil do usuário:")
+            if name:
+                lines.append(f"- Nome: {name}")
+            if age:
+                lines.append(f"- Idade: {age}")
+            if location:
+                lines.append(f"- Localização: {location}")
+
+        formality = preferences.get("formality")
+        language = preferences.get("language")
+        if formality or language:
+            lines.append("Preferências:")
+            if formality:
+                lines.append(f"- Tom: {formality}")
+            if language:
+                lines.append(f"- Idioma: {language}")
+
+        if projects:
+            lines.append(f"Projetos atuais: {', '.join(projects)}")
+
+        if facts:
+            lines.append("Fatos relevantes:")
+            for fact in facts:
+                text = fact.get("text")
+                if text:
+                    lines.append(f"- {text}")
+
+        if not lines:
+            return None
+
+        return "\n".join(lines)
+
+    def _build_llm_messages(self) -> List[Dict[str, str]]:
+        messages = list(self.history)
+        memory_context = self._build_memory_context()
+        if memory_context:
+            messages.insert(1, {"role": "system", "content": memory_context})
+        return messages
+
     # ---------- LOOP PRINCIPAL (CLI) ----------
 
     def run_cli(self) -> None:
@@ -240,6 +302,7 @@ class Orchestrator:
                     audio_path = user_text
 
                 try:
+                    print("[VOZ] Transcrevendo áudio...")
                     transcript = self.stt.transcribe_file(audio_path, language=self.voice.stt_language)
                 except Exception as e:
                     print(f"[VOZ][ERRO] Falha ao transcrever: {e}")
@@ -270,13 +333,13 @@ class Orchestrator:
                 if self.stream:
                     print("Iuno: ", end="", flush=True)
                     chunks: List[str] = []
-                    for chunk in self.llm.chat_stream(self.history):
+                    for chunk in self.llm.chat_stream(self._build_llm_messages()):
                         chunks.append(chunk)
                         print(chunk, end="", flush=True)
                     response = "".join(chunks)
                     print("\n")
                 else:
-                    response = self.llm.chat(self.history)
+                    response = self.llm.chat(self._build_llm_messages())
                     print(f"Iuno: {response}\n")
             except KeyboardInterrupt:
                 # Evita gravar uma resposta parcial no histórico.

@@ -4,3 +4,5 @@ SpeechRecognition
 python-dotenv
 sounddevice
 numpy
+edge-tts
+playsound

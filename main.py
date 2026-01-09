@@ -39,6 +39,10 @@ def main() -> None:
     default_audio_dir = os.path.join(project_root, "data", "audio")
     audio_dir = os.getenv("IUNO_AUDIO_DIR") or default_audio_dir
 
+    tts_provider = (os.getenv("IUNO_TTS_PROVIDER", "pyttsx3") or "pyttsx3").strip().lower()
+    if tts_provider not in {"pyttsx3", "edge"}:
+        tts_provider = "pyttsx3"
+
     voice_cfg = VoiceConfig(
         enable_voice_in=_env_flag("IUNO_VOICE_IN", False),
         enable_voice_out=_env_flag("IUNO_VOICE_OUT", False),
@@ -51,6 +55,7 @@ def main() -> None:
         tts_rate=int(os.getenv("IUNO_TTS_RATE", "0")) or None,
         tts_volume=float(os.getenv("IUNO_TTS_VOLUME", "0")) or None,
         tts_voice=os.getenv("IUNO_TTS_VOICE") or None,
+        tts_provider=tts_provider,
     )
 
     stt = None
@@ -74,19 +79,28 @@ def main() -> None:
 
     tts = None
     if voice_cfg.enable_voice_out:
-        # Versão mais robusta (thread dedicada) para evitar travar após a primeira fala.
-        try:
-            from iuno.voice.tts_threaded import ThreadedPyttsx3TTS
+        if voice_cfg.tts_provider == "edge":
+            from iuno.voice.tts_edge import EdgeTTS
 
-            tts = ThreadedPyttsx3TTS(
+            tts = EdgeTTS(
                 rate=voice_cfg.tts_rate,
                 volume=voice_cfg.tts_volume,
                 voice=voice_cfg.tts_voice,
             )
-        except Exception:
-            from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
+        else:
+            # Versão mais robusta (thread dedicada) para evitar travar após a primeira fala.
+            try:
+                from iuno.voice.tts_threaded import ThreadedPyttsx3TTS
 
-            tts = Pyttsx3TTS(rate=voice_cfg.tts_rate, volume=voice_cfg.tts_volume, voice=voice_cfg.tts_voice)
+                tts = ThreadedPyttsx3TTS(
+                    rate=voice_cfg.tts_rate,
+                    volume=voice_cfg.tts_volume,
+                    voice=voice_cfg.tts_voice,
+                )
+            except Exception:
+                from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
+
+                tts = Pyttsx3TTS(rate=voice_cfg.tts_rate, volume=voice_cfg.tts_volume, voice=voice_cfg.tts_voice)
 
     orchestrator = Orchestrator(
         llm_client,
