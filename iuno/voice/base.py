@@ -53,4 +53,4 @@ class VoiceConfig:
     tts_rate: Optional[int] = None
     tts_volume: Optional[float] = None
     tts_voice: Optional[str] = None
-
+    tts_provider: Literal["pyttsx3", "edge"] = "pyttsx3"

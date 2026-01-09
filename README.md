@@ -60,6 +60,7 @@ py main.py
 | `IUNO_TTS_RATE` | vazio | Velocidade do TTS (ex.: `180`) |
 | `IUNO_TTS_VOLUME` | vazio | Volume do TTS (0.0 a 1.0) |
 | `IUNO_TTS_VOICE` | vazio | Nome/id parcial da voz (depende do Windows) |
+| `IUNO_TTS_PROVIDER` | `pyttsx3` | Provedor de TTS: `pyttsx3` (offline) ou `edge` (neural online) |
 
 ## Preparando o Ollama
 
@@ -109,7 +110,7 @@ py main.py
 
 ### TTS (falar as respostas)
 
-O TTS atual é **offline** e usa `pyttsx3` (no Windows tipicamente via SAPI5).
+O TTS pode ser **offline** com `pyttsx3` (no Windows tipicamente via SAPI5) ou **neural online** com `edge-tts`.
 
 ```powershell
 # pelo .env: IUNO_VOICE_OUT=true
@@ -123,6 +124,18 @@ $env:IUNO_VOICE_OUT="true"
 $env:IUNO_TTS_RATE="180"
 $env:IUNO_TTS_VOLUME="0.9"
 # $env:IUNO_TTS_VOICE="nome-parcial-ou-id"  # opcional
+py main.py
+```
+
+#### Usando voz neural (mais natural)
+
+Se quiser uma voz feminina natural e doce, use o provedor `edge` com a voz
+`pt-BR-FranciscaNeural` (padrão quando `IUNO_TTS_PROVIDER=edge`):
+
+```powershell
+$env:IUNO_VOICE_OUT="true"
+$env:IUNO_TTS_PROVIDER="edge"
+$env:IUNO_TTS_VOICE="pt-BR-FranciscaNeural"
 py main.py
 ```
 

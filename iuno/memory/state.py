@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Iterable
 
 MemoryState = Dict[str, Any]
 
@@ -72,3 +72,10 @@ def add_long_term_fact(
 
     state.setdefault("long_term_facts", [])
     state["long_term_facts"].append(fact)
+
+
+def touch_long_term_facts(facts: Iterable[Dict[str, Any]]) -> None:
+    """Atualiza o last_accessed dos fatos consultados."""
+    now = datetime.now(timezone.utc).isoformat()
+    for fact in facts:
+        fact["last_accessed"] = now
