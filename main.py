@@ -33,6 +33,12 @@ def main() -> None:
     if voice_in_mode not in {"file", "mic"}:
         voice_in_mode = "file"
 
+    # Diretório onde os WAVs gravados serão armazenados.
+    # Padrão: uma pasta dentro do projeto.
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    default_audio_dir = os.path.join(project_root, "data", "audio")
+    audio_dir = os.getenv("IUNO_AUDIO_DIR") or default_audio_dir
+
     voice_cfg = VoiceConfig(
         enable_voice_in=_env_flag("IUNO_VOICE_IN", False),
         enable_voice_out=_env_flag("IUNO_VOICE_OUT", False),
@@ -40,6 +46,8 @@ def main() -> None:
         voice_in_mode=voice_in_mode,  # file|mic
         mic_sample_rate=int(os.getenv("IUNO_MIC_SAMPLE_RATE", "16000")),
         mic_channels=int(os.getenv("IUNO_MIC_CHANNELS", "1")),
+        audio_dir=audio_dir,
+        cleanup_audio_files=_env_flag("IUNO_CLEANUP_AUDIO_FILES", True),
         tts_rate=int(os.getenv("IUNO_TTS_RATE", "0")) or None,
         tts_volume=float(os.getenv("IUNO_TTS_VOLUME", "0")) or None,
         tts_voice=os.getenv("IUNO_TTS_VOICE") or None,
@@ -53,13 +61,13 @@ def main() -> None:
 
     recorder = None
     if voice_cfg.enable_voice_in and voice_cfg.voice_in_mode == "mic":
-        # Dependência opcional. Se não estiver instalada, o Orchestrator avisará.
         try:
             from iuno.voice.mic_sounddevice import SoundDeviceRecorder
 
             recorder = SoundDeviceRecorder(
                 sample_rate=voice_cfg.mic_sample_rate,
                 channels=voice_cfg.mic_channels,
+                output_dir=voice_cfg.audio_dir,
             )
         except Exception:
             recorder = None

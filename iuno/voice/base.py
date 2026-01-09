@@ -43,6 +43,12 @@ class VoiceConfig:
     mic_sample_rate: int = 16000
     mic_channels: int = 1
 
+    # onde salvar áudios gravados (mic); se None, usa temp do sistema
+    audio_dir: Optional[str] = None
+
+    # se True, tenta apagar os WAV gravados assim que não forem mais necessários
+    cleanup_audio_files: bool = True
+
     # output
     tts_rate: Optional[int] = None
     tts_volume: Optional[float] = None

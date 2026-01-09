@@ -1,3 +1,4 @@
+import os
 import re
 from typing import List, Dict, Optional
 
@@ -43,6 +44,22 @@ class Orchestrator:
 
         # contador de turnos de conversa (user + iuno)
         self.turn_count = 0
+
+        self._temp_audio_files: List[str] = []
+
+    def _cleanup_temp_audio_files(self) -> None:
+        if not getattr(self.voice, "cleanup_audio_files", False):
+            return
+        for p in list(self._temp_audio_files):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+            finally:
+                try:
+                    self._temp_audio_files.remove(p)
+                except ValueError:
+                    pass
 
     # ---------- MÉTODOS INTERNOS DE HISTÓRICO ----------
 
@@ -186,6 +203,7 @@ class Orchestrator:
                     user_text = input("Você: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("\n\nEncerrando...")
+                self._cleanup_temp_audio_files()
                 self.memory_store.save(self.state)
                 break
 
@@ -194,6 +212,7 @@ class Orchestrator:
 
             if user_text.lower() in {"sair", "exit", "quit"}:
                 print("Encerrando...")
+                self._cleanup_temp_audio_files()
                 self.memory_store.save(self.state)
                 break
 
@@ -204,13 +223,16 @@ class Orchestrator:
                     continue
 
                 audio_path = None
+                created_temp_audio = False
+
                 if effective_voice_in_mode == "mic":
-                    # Aqui o recorder existe (pois normalizei acima), mas mantenho a checagem por segurança.
                     if not self.recorder:
                         print("[VOZ][ERRO] Gravador de microfone não configurado.")
                         continue
                     try:
                         audio_path = self.recorder.record_wav()
+                        created_temp_audio = True
+                        self._temp_audio_files.append(audio_path)
                     except Exception as e:
                         print(f"[VOZ][ERRO] Falha ao gravar do microfone: {e}")
                         continue
@@ -222,6 +244,18 @@ class Orchestrator:
                 except Exception as e:
                     print(f"[VOZ][ERRO] Falha ao transcrever: {e}")
                     continue
+                finally:
+                    # Se o arquivo foi criado automaticamente (mic), tenta remover já após transcrever.
+                    if created_temp_audio and getattr(self.voice, "cleanup_audio_files", False):
+                        try:
+                            os.remove(audio_path)
+                        except OSError:
+                            pass
+                        # remove da lista, se estava lá
+                        try:
+                            self._temp_audio_files.remove(audio_path)
+                        except ValueError:
+                            pass
 
                 user_text = transcript
                 print(f"Você (transcrito): {user_text}")
