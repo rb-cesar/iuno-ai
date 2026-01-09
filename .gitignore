@@ -20,6 +20,12 @@ Thumbs.db
 # Local state / runtime artifacts
 *.log
 
+# Local config
+.env
+
+# Local audio recordings
+/data/audio/
+
 # If you don't want to version local chat memory, keep this ignored.
 # (Comment out the next line if you *do* want memory.json tracked.)
 memory.json

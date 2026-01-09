@@ -1,3 +1,4 @@
+import os
 import re
 from typing import List, Dict, Optional
 
@@ -5,6 +6,7 @@ from iuno.llm.base import LLMClient
 from iuno.memory.memory_base import MemoryStore
 from iuno.memory.state import ensure_default_state, add_long_term_fact
 from iuno.persona.prompts import SYSTEM_PROMPT
+from iuno.voice.base import SpeechToText, TextToSpeech, VoiceConfig, AudioRecorder
 
 
 class Orchestrator:
@@ -18,9 +20,20 @@ class Orchestrator:
             self,
             llm: LLMClient,
             memory: MemoryStore,
+            stream: bool = True,
+            voice: Optional[VoiceConfig] = None,
+            stt: Optional[SpeechToText] = None,
+            tts: Optional[TextToSpeech] = None,
+            recorder: Optional[AudioRecorder] = None,
     ):
         self.llm = llm
         self.memory_store = memory
+        self.stream = stream
+
+        self.voice = voice or VoiceConfig()
+        self.stt = stt
+        self.tts = tts
+        self.recorder = recorder
 
         raw_state = self.memory_store.load()
         self.state = ensure_default_state(raw_state)
@@ -31,6 +44,22 @@ class Orchestrator:
 
         # contador de turnos de conversa (user + iuno)
         self.turn_count = 0
+
+        self._temp_audio_files: List[str] = []
+
+    def _cleanup_temp_audio_files(self) -> None:
+        if not getattr(self.voice, "cleanup_audio_files", False):
+            return
+        for p in list(self._temp_audio_files):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+            finally:
+                try:
+                    self._temp_audio_files.remove(p)
+                except ValueError:
+                    pass
 
     # ---------- MÉTODOS INTERNOS DE HISTÓRICO ----------
 
@@ -136,16 +165,45 @@ class Orchestrator:
     # ---------- LOOP PRINCIPAL (CLI) ----------
 
     def run_cli(self) -> None:
-        """
-        Loop de chat via terminal.
-        """
+        """Loop de chat via terminal."""
         print("Iuno iniciada (modo texto). Digite 'sair' para encerrar.\n")
+
+        # Se o usuário pediu mic mas não há recorder, cai para modo file.
+        effective_voice_in_mode = self.voice.voice_in_mode
+        if self.voice.enable_voice_in and effective_voice_in_mode == "mic" and not self.recorder:
+            print(
+                "[VOZ][AVISO] Modo microfone solicitado, mas o gravador não está configurado.\n"
+                "[VOZ][AVISO] Vou usar o modo por arquivo WAV (IUNO_VOICE_IN_MODE=file).\n"
+                "[VOZ][DICA] Para usar microfone direto, instale: pip install sounddevice\n"
+            )
+            effective_voice_in_mode = "file"
+
+        if self.voice.enable_voice_in:
+            if effective_voice_in_mode == "mic":
+                print("[VOZ] Entrada por microfone habilitada (push-to-talk via ENTER).\n")
+            else:
+                print("[VOZ] Entrada por voz habilitada. Informe o caminho de um arquivo WAV para transcrever.")
+                print("[VOZ] Dica: você pode arrastar/soltar o arquivo no terminal para colar o caminho.\n")
 
         while True:
             try:
-                user_text = input("Você: ").strip()
+                if self.voice.enable_voice_in:
+                    if effective_voice_in_mode == "mic":
+                        cmd = input("(ENTER para gravar | 'sair'): ").strip()
+                        if not cmd:
+                            user_text = "__MIC__"
+                        else:
+                            user_text = cmd
+                    else:
+                        user_audio_path = input("Áudio (WAV) ou 'sair': ").strip().strip('"')
+                        if not user_audio_path:
+                            continue
+                        user_text = user_audio_path
+                else:
+                    user_text = input("Você: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("\n\nEncerrando...")
+                self._cleanup_temp_audio_files()
                 self.memory_store.save(self.state)
                 break
 
@@ -154,8 +212,53 @@ class Orchestrator:
 
             if user_text.lower() in {"sair", "exit", "quit"}:
                 print("Encerrando...")
+                self._cleanup_temp_audio_files()
                 self.memory_store.save(self.state)
                 break
+
+            # Se estiver em modo voz, primeiro obtém/transcreve o áudio.
+            if self.voice.enable_voice_in:
+                if not self.stt:
+                    print("[VOZ][ERRO] STT não configurado.")
+                    continue
+
+                audio_path = None
+                created_temp_audio = False
+
+                if effective_voice_in_mode == "mic":
+                    if not self.recorder:
+                        print("[VOZ][ERRO] Gravador de microfone não configurado.")
+                        continue
+                    try:
+                        audio_path = self.recorder.record_wav()
+                        created_temp_audio = True
+                        self._temp_audio_files.append(audio_path)
+                    except Exception as e:
+                        print(f"[VOZ][ERRO] Falha ao gravar do microfone: {e}")
+                        continue
+                else:
+                    audio_path = user_text
+
+                try:
+                    transcript = self.stt.transcribe_file(audio_path, language=self.voice.stt_language)
+                except Exception as e:
+                    print(f"[VOZ][ERRO] Falha ao transcrever: {e}")
+                    continue
+                finally:
+                    # Se o arquivo foi criado automaticamente (mic), tenta remover já após transcrever.
+                    if created_temp_audio and getattr(self.voice, "cleanup_audio_files", False):
+                        try:
+                            os.remove(audio_path)
+                        except OSError:
+                            pass
+                        # remove da lista, se estava lá
+                        try:
+                            self._temp_audio_files.remove(audio_path)
+                        except ValueError:
+                            pass
+
+                user_text = transcript
+                print(f"Você (transcrito): {user_text}")
 
             # Memória de curto prazo
             self._add_message("user", user_text)
@@ -164,15 +267,34 @@ class Orchestrator:
             self._update_memory_from_user_message(user_text)
 
             try:
-                response = self.llm.chat(self.history)
+                if self.stream:
+                    print("Iuno: ", end="", flush=True)
+                    chunks: List[str] = []
+                    for chunk in self.llm.chat_stream(self.history):
+                        chunks.append(chunk)
+                        print(chunk, end="", flush=True)
+                    response = "".join(chunks)
+                    print("\n")
+                else:
+                    response = self.llm.chat(self.history)
+                    print(f"Iuno: {response}\n")
+            except KeyboardInterrupt:
+                # Evita gravar uma resposta parcial no histórico.
+                print("\n\n[Interrompido]")
+                self.memory_store.save(self.state)
+                continue
             except Exception as e:
                 print(f"[ERRO ao chamar o modelo]: {e}")
                 continue
 
             self._add_message("assistant", response)
-            print(f"Iuno: {response}\n")
-
             self.turn_count += 1
+
+            if self.voice.enable_voice_out and self.tts:
+                try:
+                    self.tts.speak(response)
+                except Exception as e:
+                    print(f"[VOZ][ERRO] Falha no TTS: {e}")
 
             # Persiste memória de longo prazo
             self.memory_store.save(self.state)
