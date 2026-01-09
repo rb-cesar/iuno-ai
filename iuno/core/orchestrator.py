@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import List, Dict, Optional
 
 from iuno.llm.base import LLMClient
@@ -18,9 +19,11 @@ class Orchestrator:
             self,
             llm: LLMClient,
             memory: MemoryStore,
+            stream: bool = True,
     ):
         self.llm = llm
         self.memory_store = memory
+        self.stream = stream
 
         raw_state = self.memory_store.load()
         self.state = ensure_default_state(raw_state)
@@ -164,13 +167,27 @@ class Orchestrator:
             self._update_memory_from_user_message(user_text)
 
             try:
-                response = self.llm.chat(self.history)
+                if self.stream:
+                    print("Iuno: ", end="", flush=True)
+                    chunks: List[str] = []
+                    for chunk in self.llm.chat_stream(self.history):
+                        chunks.append(chunk)
+                        print(chunk, end="", flush=True)
+                    response = "".join(chunks)
+                    print("\n")
+                else:
+                    response = self.llm.chat(self.history)
+                    print(f"Iuno: {response}\n")
+            except KeyboardInterrupt:
+                # Evita gravar uma resposta parcial no histórico.
+                print("\n\n[Interrompido]")
+                self.memory_store.save(self.state)
+                continue
             except Exception as e:
                 print(f"[ERRO ao chamar o modelo]: {e}")
                 continue
 
             self._add_message("assistant", response)
-            print(f"Iuno: {response}\n")
 
             self.turn_count += 1
 
