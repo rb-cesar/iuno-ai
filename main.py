@@ -66,9 +66,19 @@ def main() -> None:
 
     tts = None
     if voice_cfg.enable_voice_out:
-        from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
+        # Versão mais robusta (thread dedicada) para evitar travar após a primeira fala.
+        try:
+            from iuno.voice.tts_threaded import ThreadedPyttsx3TTS
 
-        tts = Pyttsx3TTS(rate=voice_cfg.tts_rate, volume=voice_cfg.tts_volume, voice=voice_cfg.tts_voice)
+            tts = ThreadedPyttsx3TTS(
+                rate=voice_cfg.tts_rate,
+                volume=voice_cfg.tts_volume,
+                voice=voice_cfg.tts_voice,
+            )
+        except Exception:
+            from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
+
+            tts = Pyttsx3TTS(rate=voice_cfg.tts_rate, volume=voice_cfg.tts_volume, voice=voice_cfg.tts_voice)
 
     orchestrator = Orchestrator(
         llm_client,
