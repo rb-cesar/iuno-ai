@@ -1,2 +1,1 @@
-"""Módulo de voz (Speech-to-Text e Text-to-Speech)."""
-
+﻿"""Modulo de voz (Speech-to-Text e Text-to-Speech)."""

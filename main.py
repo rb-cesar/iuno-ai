@@ -1,115 +1,194 @@
-import os
+﻿import os
+from pathlib import Path
+from typing import Iterable, Optional
 
-# Carrega variáveis do arquivo .env (se existir)
+# Carrega variaveis do arquivo .env (se existir).
 try:  # pragma: no cover
     from dotenv import load_dotenv
 
     load_dotenv()
 except Exception:
-    # Se python-dotenv não estiver instalado, seguimos apenas com o ambiente do sistema.
+    # Se python-dotenv nao estiver instalado, seguimos apenas com o ambiente do sistema.
     pass
 
 from iuno.core.orchestrator import Orchestrator
 from iuno.llm.ollama_client import OllamaClient
 from iuno.memory.json_memory import JsonMemory
-from iuno.voice.base import VoiceConfig
+from iuno.voice.base import AudioRecorder, SpeechToText, TextToSpeech, VoiceConfig
+
+_TRUE_VALUES = {"1", "true", "yes", "y", "on"}
+_VOICE_IN_MODES = {"file", "mic"}
+_TTS_PROVIDERS = {"pyttsx3", "edge"}
 
 
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None:
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return raw.strip().lower() in _TRUE_VALUES 
 
 
-def main() -> None:
-    # Aqui você pode trocar o modelo por outro instalado no Ollama
-    llm_client = OllamaClient(model="gpt-oss:20b")
-    json_store = JsonMemory()
+def _env_str(name: str, default: str) -> str:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip()
+    return value if value else default
 
-    stream = _env_flag("IUNO_STREAM", True)
 
-    voice_in_mode = (os.getenv("IUNO_VOICE_IN_MODE", "file") or "file").strip().lower()
-    if voice_in_mode not in {"file", "mic"}:
-        voice_in_mode = "file"
+def _env_optional_str(name: str) -> Optional[str]:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    value = raw.strip()
+    return value if value else None
 
-    # Diretório onde os WAVs gravados serão armazenados.
-    # Padrão: uma pasta dentro do projeto.
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    default_audio_dir = os.path.join(project_root, "data", "audio")
-    audio_dir = os.getenv("IUNO_AUDIO_DIR") or default_audio_dir
 
-    tts_provider = (os.getenv("IUNO_TTS_PROVIDER", "pyttsx3") or "pyttsx3").strip().lower()
-    if tts_provider not in {"pyttsx3", "edge"}:
-        tts_provider = "pyttsx3"
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except ValueError:
+        return default
 
-    voice_cfg = VoiceConfig(
+
+def _env_optional_int(name: str) -> Optional[int]:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+def _env_optional_float(name: str) -> Optional[float]:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _env_choice(name: str, default: str, choices: Iterable[str]) -> str:
+    value = _env_str(name, default).lower()
+    return value if value in choices else default
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _resolve_audio_dir() -> str:
+    default_audio_dir = _project_root() / "data" / "audio"
+    return _env_str("IUNO_AUDIO_DIR", str(default_audio_dir))
+
+
+def _build_voice_config() -> VoiceConfig:
+    voice_in_mode = _env_choice("IUNO_VOICE_IN_MODE", "file", _VOICE_IN_MODES)
+    tts_provider = _env_choice("IUNO_TTS_PROVIDER", "pyttsx3", _TTS_PROVIDERS)
+
+    return VoiceConfig(
         enable_voice_in=_env_flag("IUNO_VOICE_IN", False),
         enable_voice_out=_env_flag("IUNO_VOICE_OUT", False),
-        stt_language=os.getenv("IUNO_STT_LANG", "pt-BR"),
-        voice_in_mode=voice_in_mode,  # file|mic
-        mic_sample_rate=int(os.getenv("IUNO_MIC_SAMPLE_RATE", "16000")),
-        mic_channels=int(os.getenv("IUNO_MIC_CHANNELS", "1")),
-        audio_dir=audio_dir,
+        stt_language=_env_str("IUNO_STT_LANG", "pt-BR"),
+        voice_in_mode=voice_in_mode,
+        mic_sample_rate=_env_int("IUNO_MIC_SAMPLE_RATE", 16000),
+        mic_channels=_env_int("IUNO_MIC_CHANNELS", 1),
+        audio_dir=_resolve_audio_dir(),
         cleanup_audio_files=_env_flag("IUNO_CLEANUP_AUDIO_FILES", True),
-        tts_rate=int(os.getenv("IUNO_TTS_RATE", "0")) or None,
-        tts_volume=float(os.getenv("IUNO_TTS_VOLUME", "0")) or None,
-        tts_voice=os.getenv("IUNO_TTS_VOICE") or None,
+        tts_rate=_env_optional_int("IUNO_TTS_RATE"),
+        tts_volume=_env_optional_float("IUNO_TTS_VOLUME"),
+        tts_voice=_env_optional_str("IUNO_TTS_VOICE"),
         tts_provider=tts_provider,
     )
 
-    stt = None
-    if voice_cfg.enable_voice_in:
-        from iuno.voice.stt_speech_recognition import SpeechRecognitionSTT
 
-        stt = SpeechRecognitionSTT()
+def _build_stt(voice_cfg: VoiceConfig) -> Optional[SpeechToText]:
+    if not voice_cfg.enable_voice_in:
+        return None
 
-    recorder = None
-    if voice_cfg.enable_voice_in and voice_cfg.voice_in_mode == "mic":
-        try:
-            from iuno.voice.mic_sounddevice import SoundDeviceRecorder
+    from iuno.voice.stt_speech_recognition import SpeechRecognitionSTT
 
-            recorder = SoundDeviceRecorder(
-                sample_rate=voice_cfg.mic_sample_rate,
-                channels=voice_cfg.mic_channels,
-                output_dir=voice_cfg.audio_dir,
-            )
-        except Exception:
-            recorder = None
+    return SpeechRecognitionSTT()
 
-    tts = None
-    if voice_cfg.enable_voice_out:
-        if voice_cfg.tts_provider == "edge":
-            from iuno.voice.tts_edge import EdgeTTS
 
-            tts = EdgeTTS(
-                rate=voice_cfg.tts_rate,
-                volume=voice_cfg.tts_volume,
-                voice=voice_cfg.tts_voice,
-            )
-        else:
-            # Versão mais robusta (thread dedicada) para evitar travar após a primeira fala.
-            try:
-                from iuno.voice.tts_threaded import ThreadedPyttsx3TTS
+def _build_recorder(voice_cfg: VoiceConfig) -> Optional[AudioRecorder]:
+    if not voice_cfg.enable_voice_in or voice_cfg.voice_in_mode != "mic":
+        return None
 
-                tts = ThreadedPyttsx3TTS(
-                    rate=voice_cfg.tts_rate,
-                    volume=voice_cfg.tts_volume,
-                    voice=voice_cfg.tts_voice,
-                )
-            except Exception:
-                from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
+    try:
+        from iuno.voice.mic_sounddevice import SoundDeviceRecorder
+    except Exception:
+        return None
 
-                tts = Pyttsx3TTS(rate=voice_cfg.tts_rate, volume=voice_cfg.tts_volume, voice=voice_cfg.tts_voice)
+    try:
+        return SoundDeviceRecorder(
+            sample_rate=voice_cfg.mic_sample_rate,
+            channels=voice_cfg.mic_channels,
+            output_dir=voice_cfg.audio_dir,
+        )
+    except Exception:
+        return None
+
+
+def _build_tts(voice_cfg: VoiceConfig) -> Optional[TextToSpeech]:
+    if not voice_cfg.enable_voice_out:
+        return None
+
+    if voice_cfg.tts_provider == "edge":
+        from iuno.voice.tts_edge import EdgeTTS
+
+        return EdgeTTS(
+            rate=voice_cfg.tts_rate,
+            volume=voice_cfg.tts_volume,
+            voice=voice_cfg.tts_voice,
+        )
+
+    # Thread dedicada para evitar travamentos do pyttsx3 apos a primeira fala.
+    try:
+        from iuno.voice.tts_threaded import ThreadedPyttsx3TTS
+
+        return ThreadedPyttsx3TTS(
+            rate=voice_cfg.tts_rate,
+            volume=voice_cfg.tts_volume,
+            voice=voice_cfg.tts_voice,
+        )
+    except Exception:
+        from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
+
+        return Pyttsx3TTS(
+            rate=voice_cfg.tts_rate,
+            volume=voice_cfg.tts_volume,
+            voice=voice_cfg.tts_voice,
+        )
+
+
+def main() -> None:
+    # Troque o modelo por outro instalado no Ollama.
+    llm_client = OllamaClient(model="gpt-oss:20b")
+    json_store = JsonMemory()
+
+    voice_cfg = _build_voice_config()
 
     orchestrator = Orchestrator(
         llm_client,
         json_store,
-        stream=stream,
+        stream=_env_flag("IUNO_STREAM", True),
         voice=voice_cfg,
-        stt=stt,
-        tts=tts,
-        recorder=recorder,
+        stt=_build_stt(voice_cfg),
+        tts=_build_tts(voice_cfg),
+        recorder=_build_recorder(voice_cfg),
     )
     orchestrator.run_cli()
 

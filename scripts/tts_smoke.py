@@ -1,14 +1,14 @@
-"""Smoke test manual para TTS.
+﻿"""Smoke test manual para TTS.
 
 Uso:
   py scripts/tts_smoke.py
 
-Ele tenta falar duas frases em sequência com uma pausa curta.
+Ele tenta falar duas frases em sequencia com uma pausa curta.
 """
 
 import sys
-from pathlib import Path
 import time
+from pathlib import Path
 
 # Permite importar o pacote local ao executar como script.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from iuno.voice.tts_pyttsx3 import Pyttsx3TTS
 
 
-def main():
+def main() -> None:
     tts = Pyttsx3TTS()
     print("Falando 1...")
     tts.speak("Teste um")

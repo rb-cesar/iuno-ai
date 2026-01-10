@@ -1,9 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import tempfile
 import wave
-from typing import Optional, List
+from typing import List, Optional
 
 from iuno.voice.base import AudioRecorder, VoiceError
 
@@ -12,7 +12,7 @@ class SoundDeviceRecorder(AudioRecorder):
     """Gravador simples via `sounddevice`.
 
     UX: "push-to-talk" por ENTER.
-    - Aperte ENTER para começar a gravar
+    - Aperte ENTER para comecar a gravar
     - Aperte ENTER novamente para parar
 
     Salva um WAV PCM 16-bit mono/stereo (dependendo do config).
@@ -24,7 +24,7 @@ class SoundDeviceRecorder(AudioRecorder):
         channels: int = 1,
         device: Optional[int] = None,
         output_dir: Optional[str] = None,
-    ):
+    ) -> None:
         self.sample_rate = int(sample_rate)
         self.channels = int(channels)
         self.device = device
@@ -32,17 +32,17 @@ class SoundDeviceRecorder(AudioRecorder):
 
         try:
             import sounddevice as sd
-        except Exception as e:  # pragma: no cover
+        except Exception as exc:  # pragma: no cover
             raise VoiceError(
-                "Para usar microfone direto, instale a dependência: pip install sounddevice numpy"
-            ) from e
+                "Para usar microfone direto, instale a dependencia: pip install sounddevice numpy"
+            ) from exc
 
         self._sd = sd
 
     def _make_output_path(self) -> str:
         if self.output_dir:
             os.makedirs(self.output_dir, exist_ok=True)
-            # NamedTemporaryFile no Windows precisa ser fechado para reabrir no wave
+            # NamedTemporaryFile no Windows precisa ser fechado para reabrir no wave.
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav", dir=self.output_dir)
         else:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
@@ -54,7 +54,7 @@ class SoundDeviceRecorder(AudioRecorder):
     def record_wav(self) -> str:
         sd = self._sd
 
-        print("[MIC] Pressione ENTER para começar a gravar...")
+        print("[MIC] Pressione ENTER para comecar a gravar...")
         input()
         print("[MIC] Gravando... pressione ENTER para parar.")
 
@@ -62,7 +62,7 @@ class SoundDeviceRecorder(AudioRecorder):
 
         def callback(indata, frames_count, time_info, status):  # pragma: no cover
             if status:
-                # status é informativo; não aborta automaticamente
+                # status e informativo; nao aborta automaticamente
                 pass
             frames.append(indata.copy().tobytes())
 
@@ -74,12 +74,12 @@ class SoundDeviceRecorder(AudioRecorder):
                 callback=callback,
                 device=self.device,
             ):
-                input()  # bloqueia até ENTER
-        except Exception as e:
-            raise VoiceError(f"Falha ao gravar do microfone: {e}") from e
+                input()  # bloqueia ate ENTER
+        except Exception as exc:
+            raise VoiceError(f"Falha ao gravar do microfone: {exc}") from exc
 
         if not frames:
-            raise VoiceError("Nenhum áudio capturado.")
+            raise VoiceError("Nenhum audio capturado.")
 
         tmp_path = self._make_output_path()
 
@@ -89,9 +89,8 @@ class SoundDeviceRecorder(AudioRecorder):
                 wf.setsampwidth(2)  # int16
                 wf.setframerate(self.sample_rate)
                 wf.writeframes(b"".join(frames))
-        except Exception as e:
-            raise VoiceError(f"Falha ao salvar WAV temporário: {e}") from e
+        except Exception as exc:
+            raise VoiceError(f"Falha ao salvar WAV temporario: {exc}") from exc
 
-        print(f"[MIC] Áudio salvo em: {tmp_path}")
+        print(f"[MIC] Audio salvo em: {tmp_path}")
         return tmp_path
-

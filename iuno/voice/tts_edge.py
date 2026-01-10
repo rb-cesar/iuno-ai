@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import tempfile
@@ -14,7 +14,7 @@ from iuno.voice.base import TextToSpeech, VoiceError
 class EdgeTTS(TextToSpeech):
     """TTS usando edge-tts (Microsoft Edge/Neural).
 
-    Gera áudio via serviço da Microsoft e toca localmente com playsound.
+    Gera audio via servico da Microsoft e toca localmente com playsound.
     """
 
     def __init__(
@@ -59,8 +59,8 @@ class EdgeTTS(TextToSpeech):
         try:
             asyncio.run(self._synthesize(text, tmp_path))
             playsound(str(tmp_path))
-        except Exception as e:  # pragma: no cover
-            raise VoiceError(f"Falha no TTS (edge-tts): {e}") from e
+        except Exception as exc:  # pragma: no cover
+            raise VoiceError(f"Falha no TTS (edge-tts): {exc}") from exc
         finally:
             try:
                 tmp_path.unlink(missing_ok=True)

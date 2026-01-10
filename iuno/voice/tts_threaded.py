@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import queue
 import threading
@@ -8,11 +8,11 @@ from iuno.voice.base import TextToSpeech, VoiceError
 
 
 class ThreadedPyttsx3TTS(TextToSpeech):
-    """TTS via pyttsx3 rodando num thread dedicado.
+    """TTS via pyttsx3 rodando em um thread dedicado.
 
-    Isso tende a ser mais confiável no Windows quando o loop da aplicação faz
+    Isso tende a ser mais confiavel no Windows quando o loop da aplicacao faz
     muita I/O no terminal (input/print/streaming) e o pyttsx3/SAPI5 acaba
-    travando após a primeira fala.
+    travando apos a primeira fala.
 
     A API continua simples: `speak(text)` enfileira e retorna rapidamente.
     """
@@ -23,7 +23,7 @@ class ThreadedPyttsx3TTS(TextToSpeech):
         volume: Optional[float] = None,
         voice: Optional[str] = None,
         daemon: bool = True,
-    ):
+    ) -> None:
         self._rate = rate
         self._volume = volume
         self._voice = voice
@@ -35,7 +35,7 @@ class ThreadedPyttsx3TTS(TextToSpeech):
         self._thread = threading.Thread(target=self._run, name="iuno-tts", daemon=daemon)
         self._thread.start()
 
-        # Aguarda inicialização do engine para falhar rápido se não tiver pyttsx3.
+        # Aguarda inicializacao do engine para falhar rapido se nao tiver pyttsx3.
         self._ready.wait(timeout=5)
         if self._err is not None:
             raise VoiceError(f"Falha ao inicializar TTS: {self._err}")
@@ -54,11 +54,11 @@ class ThreadedPyttsx3TTS(TextToSpeech):
             if self._voice:
                 selected = None
                 try:
-                    for v in engine.getProperty("voices"):
-                        if v.id == self._voice or (
-                            getattr(v, "name", "") and self._voice.lower() in v.name.lower()
+                    for voice in engine.getProperty("voices"):
+                        if voice.id == self._voice or (
+                            getattr(voice, "name", "") and self._voice.lower() in voice.name.lower()
                         ):
-                            selected = v.id
+                            selected = voice.id
                             break
                 except Exception:
                     selected = None
@@ -86,7 +86,7 @@ class ThreadedPyttsx3TTS(TextToSpeech):
                     engine.say(text)
                     engine.runAndWait()
                 except Exception:
-                    # auto-cura: reinicializa engine e tenta uma vez
+                    # Auto-cura: reinicializa engine e tenta uma vez.
                     try:
                         engine = pyttsx3.init()
                         engine.say(text)
@@ -98,8 +98,8 @@ class ThreadedPyttsx3TTS(TextToSpeech):
                         engine.stop()
                     except Exception:
                         pass
-        except BaseException as e:
-            self._err = e
+        except BaseException as exc:
+            self._err = exc
             self._ready.set()
 
     def speak(self, text: str) -> None:
@@ -108,11 +108,10 @@ class ThreadedPyttsx3TTS(TextToSpeech):
             return
 
         if self._err is not None:
-            raise VoiceError(f"TTS indisponível: {self._err}")
+            raise VoiceError(f"TTS indisponivel: {self._err}")
 
         self._q.put(text)
 
     def close(self) -> None:
         """Finaliza o thread de TTS (opcional)."""
         self._q.put(None)
-

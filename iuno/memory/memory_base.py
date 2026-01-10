@@ -1,14 +1,16 @@
-from abc import ABC, abstractmethod
+﻿from abc import ABC, abstractmethod
 from typing import Any, Dict
+
+MemoryData = Dict[str, Any]
 
 
 class MemoryStore(ABC):
     @abstractmethod
-    def load(self) -> Dict[str, Any]:
-        """Carrega o objeto de memória persistida."""
+    def load(self) -> MemoryData:
+        """Carrega o objeto de memoria persistida."""
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, data: Dict[str, Any]) -> None:
-        """Salva o objeto de memória persistida."""
+    def save(self, data: MemoryData) -> None:
+        """Salva o objeto de memoria persistida."""
         raise NotImplementedError

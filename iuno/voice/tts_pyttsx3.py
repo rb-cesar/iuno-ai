@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Optional
 
@@ -8,9 +8,9 @@ from iuno.voice.base import TextToSpeech, VoiceError
 class Pyttsx3TTS(TextToSpeech):
     """TTS offline via pyttsx3 (no Windows, normalmente usa SAPI5).
 
-    Observação: em alguns ambientes no Windows, o pyttsx3 pode "travar" depois da
-    primeira fala se o loop interno ficar em um estado inconsistente. Esta classe
-    tenta ser resiliente limpando a fila e reinicializando o engine em caso de erro.
+    Em alguns ambientes no Windows, o pyttsx3 pode travar depois da
+    primeira fala se o loop interno ficar inconsistente. Esta classe tenta
+    ser resiliente limpando a fila e reinicializando o engine em caso de erro.
     """
 
     def __init__(
@@ -18,7 +18,7 @@ class Pyttsx3TTS(TextToSpeech):
         rate: Optional[int] = None,
         volume: Optional[float] = None,
         voice: Optional[str] = None,
-    ):
+    ) -> None:
         self._rate = rate
         self._volume = volume
         self._voice = voice
@@ -28,10 +28,10 @@ class Pyttsx3TTS(TextToSpeech):
     def _init_engine(self) -> None:
         try:
             import pyttsx3
-        except Exception as e:  # pragma: no cover
+        except Exception as exc:  # pragma: no cover
             raise VoiceError(
-                "pyttsx3 não está instalado. Instale com: pip install pyttsx3"
-            ) from e
+                "pyttsx3 nao esta instalado. Instale com: pip install pyttsx3"
+            ) from exc
 
         engine = pyttsx3.init()
 
@@ -43,9 +43,11 @@ class Pyttsx3TTS(TextToSpeech):
         if self._voice:
             selected = None
             try:
-                for v in engine.getProperty("voices"):
-                    if v.id == self._voice or (getattr(v, "name", "") and self._voice.lower() in v.name.lower()):
-                        selected = v.id
+                for voice in engine.getProperty("voices"):
+                    if voice.id == self._voice or (
+                        getattr(voice, "name", "") and self._voice.lower() in voice.name.lower()
+                    ):
+                        selected = voice.id
                         break
             except Exception:
                 selected = None
@@ -63,7 +65,6 @@ class Pyttsx3TTS(TextToSpeech):
         if self._engine is None:  # pragma: no cover
             self._init_engine()
 
-        # Limpa qualquer fala pendente anterior.
         try:
             self._engine.stop()
         except Exception:
@@ -72,7 +73,7 @@ class Pyttsx3TTS(TextToSpeech):
         try:
             self._engine.say(text)
             self._engine.runAndWait()
-        except Exception as e:
+        except Exception as exc:
             # Tentativa de auto-cura: reinicia o engine e tenta mais uma vez.
             try:
                 self._init_engine()
@@ -80,9 +81,8 @@ class Pyttsx3TTS(TextToSpeech):
                 self._engine.runAndWait()
                 return
             except Exception:
-                raise VoiceError(f"Falha no TTS (pyttsx3): {e}") from e
+                raise VoiceError(f"Falha no TTS (pyttsx3): {exc}") from exc
         finally:
-            # Garante que o engine não fica com fila pendente.
             try:
                 self._engine.stop()
             except Exception:

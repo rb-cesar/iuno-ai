@@ -1,18 +1,21 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Literal
+from typing import Literal, Optional
+
+VoiceMode = Literal["file", "mic"]
+TTSProvider = Literal["pyttsx3", "edge"]
 
 
 class VoiceError(RuntimeError):
-    """Erro genérico da camada de voz."""
+    """Erro generico da camada de voz."""
 
 
 class SpeechToText(ABC):
     @abstractmethod
     def transcribe_file(self, path: str, language: str = "pt-BR") -> str:
-        """Transcreve um arquivo de áudio (idealmente WAV) e retorna o texto."""
+        """Transcreve um arquivo de audio (idealmente WAV) e retorna o texto."""
         raise NotImplementedError
 
 
@@ -26,7 +29,7 @@ class TextToSpeech(ABC):
 class AudioRecorder(ABC):
     @abstractmethod
     def record_wav(self) -> str:
-        """Grava áudio e retorna o caminho de um arquivo WAV gerado."""
+        """Grava audio e retorna o caminho de um arquivo WAV gerado."""
         raise NotImplementedError
 
 
@@ -37,20 +40,20 @@ class VoiceConfig:
 
     # input
     stt_language: str = "pt-BR"
-    voice_in_mode: Literal["file", "mic"] = "file"
+    voice_in_mode: VoiceMode = "file"
 
     # mic recording (apenas quando voice_in_mode == "mic")
     mic_sample_rate: int = 16000
     mic_channels: int = 1
 
-    # onde salvar áudios gravados (mic); se None, usa temp do sistema
+    # onde salvar audios gravados (mic); se None, usa temp do sistema
     audio_dir: Optional[str] = None
 
-    # se True, tenta apagar os WAV gravados assim que não forem mais necessários
+    # se True, tenta apagar os WAV gravados assim que nao forem mais necessarios
     cleanup_audio_files: bool = True
 
     # output
     tts_rate: Optional[int] = None
     tts_volume: Optional[float] = None
     tts_voice: Optional[str] = None
-    tts_provider: Literal["pyttsx3", "edge"] = "pyttsx3"
+    tts_provider: TTSProvider = "pyttsx3"

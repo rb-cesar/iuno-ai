@@ -1,24 +1,16 @@
-from abc import ABC, abstractmethod
-from typing import List, Dict, Iterable
+﻿from abc import ABC, abstractmethod
+from typing import Dict, Iterable, List
+
+Message = Dict[str, str]
+MessageList = List[Message]
 
 
 class LLMClient(ABC):
     @abstractmethod
-    def chat(self, messages: List[Dict[str, str]]) -> str:
-        """
-        messages: lista de mensagens no formato:
-            [
-            {"role": "system"|"user"|"assistant", "content": "..."}
-            ]
-        Retorna apenas o texto de resposta do modelo.
-        """
+    def chat(self, messages: MessageList) -> str:
+        """Envia mensagens e retorna o texto da resposta."""
         raise NotImplementedError
 
-    def chat_stream(self, messages: List[Dict[str, str]]) -> Iterable[str]:
-        """Versão em streaming do chat.
-
-        Deve gerar (yield) pedaços incrementais de texto conforme o modelo responde.
-
-        Implementação padrão: faz fallback para `chat()` e retorna um único chunk.
-        """
+    def chat_stream(self, messages: MessageList) -> Iterable[str]:
+        """Versao em streaming do chat (fallback para chat())."""
         yield self.chat(messages)
