@@ -1,0 +1,10 @@
+{
+  "name": "iuno-desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"Desktop app: scaffold Electron + React/Vite/TS/Tailwind\"",
+    "build": "echo \"Desktop app: build not configured yet\""
+  }
+}
