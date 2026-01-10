@@ -111,6 +111,99 @@ Digite sua mensagem após `Você:`.
 Para sair:
 - `sair` (ou `exit` / `quit`)
 
+## Backend API (FastAPI)
+
+O backend agora expõe uma API HTTP/WS via FastAPI. Para subir o servidor:
+
+```powershell
+cd apps/backend
+py -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Endpoints HTTP
+
+#### `GET /health`
+
+Resposta JSON:
+
+```json
+{
+  "status": "ok",
+  "version": "dev"
+}
+```
+
+#### `POST /stt`
+
+Recebe áudio via multipart (`file`) e retorna o texto transcrito:
+
+```bash
+curl -F "file=@audio.wav" http://localhost:8000/stt
+```
+
+Resposta:
+
+```json
+{
+  "text": "..."
+}
+```
+
+#### `POST /tts`
+
+Recebe JSON com texto e devolve bytes de áudio (`audio/mpeg` ou `audio/wav`):
+
+```json
+{
+  "text": "Oi! Eu sou a Iuno.",
+  "format": "mp3"
+}
+```
+
+O campo `format` pode ser `mp3` (edge-tts) ou `wav` (pyttsx3). Se omitido, o formato padrão depende do provedor configurado.
+
+### WebSocket `WS /chat`
+
+Streaming de tokens do Ollama. O cliente envia mensagens JSON e recebe eventos JSON em streaming.
+
+**Contrato JSON (mensagens de entrada):**
+
+```json
+{
+  "type": "user_message",
+  "content": "Sua pergunta aqui"
+}
+```
+
+**Eventos de saída:**
+
+- `assistant_chunk` — trecho parcial do modelo:
+
+```json
+{
+  "type": "assistant_chunk",
+  "content": "..."
+}
+```
+
+- `assistant_done` — resposta final completa:
+
+```json
+{
+  "type": "assistant_done",
+  "content": "Resposta completa"
+}
+```
+
+Em caso de erro de protocolo, o servidor responde:
+
+```json
+{
+  "type": "error",
+  "message": "..."
+}
+```
+
 ### Streaming (resposta em tempo real)
 
 Por padrão, o streaming fica **ligado**. Nesse modo, a Iuno imprime a resposta conforme ela chega do Ollama.
@@ -234,4 +327,3 @@ A base do app desktop fica em `apps/desktop`.
 ```bash
 cd apps/desktop
 ```
-

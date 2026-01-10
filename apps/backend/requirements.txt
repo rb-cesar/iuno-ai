@@ -1,4 +1,8 @@
 requests
+fastapi
+uvicorn
+python-multipart
+websockets
 pyttsx3
 SpeechRecognition
 python-dotenv
