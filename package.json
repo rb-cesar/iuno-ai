@@ -1,0 +1,12 @@
+{
+  "name": "iuno-ai",
+  "private": true,
+  "workspaces": [
+    "apps/desktop"
+  ],
+  "scripts": {
+    "dev:backend": "python apps/backend/main.py",
+    "dev:desktop": "npm --workspace apps/desktop run dev",
+    "build:desktop": "npm --workspace apps/desktop run build"
+  }
+}
