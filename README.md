@@ -22,7 +22,7 @@ npm run dev:desktop
 npm run build:desktop
 ```
 
-> Os scripts do backend apenas chamam `python apps/backend/main.py`.
+> Os scripts do backend apenas chamam `python apps/backend/main.py`. O desktop agora serve uma UI estática em `http://localhost:5173`.
 
 ## Backend (Python)
 

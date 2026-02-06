@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "echo \"Desktop app: scaffold Electron + React/Vite/TS/Tailwind\"",
-    "build": "echo \"Desktop app: build not configured yet\""
+    "dev": "python -m http.server 5173 --directory .",
+    "build": "echo \"Desktop app: static assets (no build step)\""
   }
 }

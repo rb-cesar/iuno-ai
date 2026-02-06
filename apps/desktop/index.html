@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iuno Desktop</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Iuno Desktop</p>
+          <h1>Controle o agente com voz, ações e visão sob demanda.</h1>
+          <p class="subhead">
+            Esta interface acompanha o backend novo com ferramentas, permissões e captura de tela.
+          </p>
+        </div>
+        <div class="status-card">
+          <h2>Status do backend</h2>
+          <p id="health-status">Verificando...</p>
+          <div class="status-meta">
+            <span id="backend-version">Versão: —</span>
+            <span id="backend-url">URL: http://localhost:8000</span>
+          </div>
+          <button id="refresh-health" class="secondary">Atualizar</button>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="card">
+          <div class="card-header">
+            <h2>Chat em tempo real</h2>
+            <span class="pill" id="chat-status">Desconectado</span>
+          </div>
+          <div class="chat-window" id="chat-window"></div>
+          <div class="chat-controls">
+            <input id="chat-input" type="text" placeholder="Digite sua mensagem..." />
+            <button id="chat-send">Enviar</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Ferramentas disponíveis</h2>
+            <button id="refresh-tools" class="secondary">Recarregar</button>
+          </div>
+          <ul id="tools-list" class="tools-list"></ul>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Executar ferramenta</h2>
+          </div>
+          <label for="tool-name">Ferramenta</label>
+          <input id="tool-name" type="text" placeholder="ex: open_url" />
+          <label for="tool-args">Args (JSON)</label>
+          <textarea id="tool-args" rows="6" placeholder='{"url": "https://example.com"}'></textarea>
+          <button id="run-tool">Executar</button>
+          <pre id="tool-result" class="code-block">Resultado: —</pre>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Fluxo sugerido</h2>
+          </div>
+          <ol class="steps">
+            <li>Ative o backend com <code>py -m uvicorn server:app --reload</code>.</li>
+            <li>Use <code>/tools</code> para validar o allowlist.</li>
+            <li>Execute uma ação e confirme a resposta do agente.</li>
+            <li>Peça captura de tela quando precisar de visão.</li>
+          </ol>
+          <div class="hint">
+            Dica: mantenha <code>IUNO_TOOLS_REQUIRE_APPROVAL=true</code> para segurança.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

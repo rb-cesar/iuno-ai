@@ -1,0 +1,255 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+  font-family: "Inter", system-ui, sans-serif;
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-soft: #1f2330;
+  --text: #f4f6fb;
+  --muted: #b6bcc8;
+  --accent: #6aa3ff;
+  --success: #24c07b;
+  --warning: #f7b93e;
+  --border: #2a2f3d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #1b1f2b 0%, #0f1115 50%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 8px 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
+.subhead {
+  max-width: 540px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.status-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  min-width: 260px;
+}
+
+.status-card h2 {
+  margin: 0 0 8px;
+}
+
+.status-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.card {
+  background: var(--panel);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 320px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--panel-soft);
+  color: var(--muted);
+}
+
+.pill.connected {
+  background: rgba(36, 192, 123, 0.2);
+  color: var(--success);
+}
+
+.pill.warning {
+  background: rgba(247, 185, 62, 0.2);
+  color: var(--warning);
+}
+
+.chat-window {
+  background: var(--panel-soft);
+  border-radius: 12px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-bubble {
+  padding: 10px 12px;
+  border-radius: 12px;
+  max-width: 85%;
+  line-height: 1.4;
+}
+
+.chat-bubble.user {
+  background: rgba(106, 163, 255, 0.2);
+  align-self: flex-end;
+}
+
+.chat-bubble.assistant {
+  background: rgba(255, 255, 255, 0.08);
+  align-self: flex-start;
+}
+
+.chat-controls {
+  display: flex;
+  gap: 8px;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+
+input,
+textarea {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  background: var(--accent);
+  border: none;
+  color: #0f1115;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+.tools-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.tool-item {
+  background: var(--panel-soft);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+
+.tool-item h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.tool-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.code-block {
+  background: #0b0d12;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 12px;
+  color: #d5d8e1;
+  overflow-x: auto;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.hint {
+  background: rgba(106, 163, 255, 0.12);
+  border: 1px solid rgba(106, 163, 255, 0.3);
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
