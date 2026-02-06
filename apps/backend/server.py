@@ -10,8 +10,9 @@ from fastapi import Body, FastAPI, File, HTTPException, UploadFile, WebSocket, W
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from iuno.services.config import env_str
+from iuno.services.config import build_tool_policy, build_tool_registry, env_str, resolve_action_log_path
 from iuno.services.iuno_service import TTSResult, build_service
+from iuno.tools import ToolCall, execute_tool
 from iuno.voice.base import VoiceError
 
 load_dotenv()
@@ -29,6 +30,11 @@ class TTSRequest(BaseModel):
 class ChatMessage(BaseModel):
     type: str
     content: Optional[str] = None
+
+
+class ToolCallRequest(BaseModel):
+    name: str
+    args: dict = {}
 
 
 @app.get("/health")
@@ -75,6 +81,21 @@ async def text_to_speech(payload: TTSRequest = Body(...)) -> Response:
         media_type=result.media_type,
         headers={"Content-Disposition": f'inline; filename="{result.filename}"'},
     )
+
+
+@app.get("/tools")
+def list_tools() -> dict:
+    registry = build_tool_registry()
+    return {"tools": registry.list_specs()}
+
+
+@app.post("/tools/execute")
+def execute_tool_call(payload: ToolCallRequest = Body(...)) -> dict:
+    registry = build_tool_registry()
+    policy = build_tool_policy(interactive=False)
+    call = ToolCall(name=payload.name, args=payload.args or {})
+    result = execute_tool(call, registry, policy, log_path=resolve_action_log_path())
+    return {"ok": result.ok, "output": result.output, "error": result.error, "metadata": result.metadata}
 
 
 @app.websocket("/chat")

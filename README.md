@@ -83,6 +83,10 @@ py main.py
 | `IUNO_TTS_VOLUME` | vazio | Volume do TTS (0.0 a 1.0) |
 | `IUNO_TTS_VOICE` | vazio | Nome/id parcial da voz (depende do Windows) |
 | `IUNO_TTS_PROVIDER` | `pyttsx3` | Provedor de TTS: `pyttsx3` (offline) ou `edge` (neural online) |
+| `IUNO_TOOLS_ALLOWLIST` | vazio | Lista separada por virgula de ferramentas permitidas |
+| `IUNO_TOOLS_REQUIRE_APPROVAL` | `true` | Exige aprovacao antes de executar ferramentas |
+| `IUNO_TOOLS_AUTO_APPROVE` | `false` | Aprova automaticamente (use com cuidado) |
+| `IUNO_ACTION_LOG` | `action_log.jsonl` | Caminho do log de acoes |
 
 ### Preparando o Ollama
 
@@ -161,6 +165,27 @@ Recebe JSON com texto e devolve bytes de áudio (`audio/mpeg` ou `audio/wav`):
 ```
 
 O campo `format` pode ser `mp3` (edge-tts) ou `wav` (pyttsx3). Se omitido, o formato padrão depende do provedor configurado.
+
+### Ferramentas (acao no computador)
+
+O backend expõe ferramentas para automação controlada (mouse/teclado/screenshot). Elas podem ser listadas e executadas via API:
+
+#### `GET /tools`
+
+Retorna a lista de ferramentas disponíveis e seus schemas.
+
+#### `POST /tools/execute`
+
+Executa uma ferramenta via JSON:
+
+```json
+{
+  "name": "open_url",
+  "args": { "url": "https://example.com" }
+}
+```
+
+> Por padrão, a execução exige aprovação (`IUNO_TOOLS_REQUIRE_APPROVAL=true`). Para automação sem prompt, use `IUNO_TOOLS_AUTO_APPROVE=true` com cuidado.
 
 ### WebSocket `WS /chat`
 
