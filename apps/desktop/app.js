@@ -19,7 +19,13 @@ const toolResult = document.getElementById("tool-result");
 
 const addChatBubble = (text, role) => {
   const bubble = document.createElement("div");
-  bubble.className = `chat-bubble ${role}`;
+  const base =
+    "max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed shadow-sm";
+  const roleClass =
+    role === "user"
+      ? "self-end bg-blue-500/20 text-slate-100"
+      : "self-start bg-slate-800/70 text-slate-100";
+  bubble.className = `${base} ${roleClass}`;
   bubble.textContent = text;
   chatWindow.appendChild(bubble);
   chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -27,8 +33,10 @@ const addChatBubble = (text, role) => {
 
 const setChatStatus = (state) => {
   chatStatus.textContent = state;
-  chatStatus.classList.toggle("connected", state === "Conectado");
-  chatStatus.classList.toggle("warning", state === "Reconectando");
+  chatStatus.classList.toggle("bg-emerald-500/20", state === "Conectado");
+  chatStatus.classList.toggle("text-emerald-300", state === "Conectado");
+  chatStatus.classList.toggle("bg-amber-500/20", state === "Reconectando");
+  chatStatus.classList.toggle("text-amber-300", state === "Reconectando");
 };
 
 const fetchHealth = async () => {
@@ -51,21 +59,25 @@ const fetchTools = async () => {
     const data = await response.json();
     const tools = data.tools ?? [];
     if (tools.length === 0) {
-      toolsList.innerHTML = "<li class='tool-item'>Nenhuma ferramenta encontrada.</li>";
+      toolsList.innerHTML =
+        "<li class='rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-400'>Nenhuma ferramenta encontrada.</li>";
       return;
     }
     tools.forEach((tool) => {
       const item = document.createElement("li");
-      item.className = "tool-item";
+      item.className = "rounded-xl border border-slate-800 bg-slate-950/60 p-3";
       item.innerHTML = `
-        <h3>${tool.name}</h3>
-        <p>${tool.description}</p>
-        <p><strong>Args:</strong> ${JSON.stringify(tool.args_schema)}</p>
+        <h3 class="text-sm font-semibold text-slate-100">${tool.name}</h3>
+        <p class="mt-1 text-xs text-slate-400">${tool.description}</p>
+        <p class="mt-2 text-xs text-slate-500"><strong>Args:</strong> ${JSON.stringify(
+          tool.args_schema,
+        )}</p>
       `;
       toolsList.appendChild(item);
     });
   } catch (error) {
-    toolsList.innerHTML = "<li class='tool-item'>Backend indisponível.</li>";
+    toolsList.innerHTML =
+      "<li class='rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-400'>Backend indisponível.</li>";
   }
 };
 
