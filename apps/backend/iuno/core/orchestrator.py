@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import json
 import os
 import re
 from typing import Any, Dict, List, Optional
@@ -8,6 +9,14 @@ from iuno.llm.base import LLMClient
 from iuno.memory.memory_base import MemoryStore
 from iuno.memory.state import add_long_term_fact, ensure_default_state, touch_long_term_facts
 from iuno.persona.prompts import SYSTEM_PROMPT
+from iuno.tools import (
+    ToolCall,
+    ToolPolicy,
+    ToolRegistry,
+    ToolResult,
+    execute_tool,
+    tool_result_to_message,
+)
 from iuno.voice.base import AudioRecorder, SpeechToText, TextToSpeech, VoiceConfig
 
 Message = Dict[str, str]
@@ -43,6 +52,9 @@ class Orchestrator:
         stt: Optional[SpeechToText] = None,
         tts: Optional[TextToSpeech] = None,
         recorder: Optional[AudioRecorder] = None,
+        tool_registry: Optional[ToolRegistry] = None,
+        tool_policy: Optional[ToolPolicy] = None,
+        tool_log_path: Optional[str] = None,
     ) -> None:
         self.llm = llm
         self.memory_store = memory
@@ -52,6 +64,9 @@ class Orchestrator:
         self.stt = stt
         self.tts = tts
         self.recorder = recorder
+        self.tool_registry = tool_registry
+        self.tool_policy = tool_policy
+        self.tool_log_path = tool_log_path
 
         raw_state = self.memory_store.load()
         self.state = ensure_default_state(raw_state)
@@ -64,6 +79,7 @@ class Orchestrator:
         self.turn_count = 0
 
         self._temp_audio_files: List[str] = []
+        self._max_tool_calls = 3
 
     def _cleanup_temp_audio_files(self) -> None:
         if not getattr(self.voice, "cleanup_audio_files", False):
@@ -300,7 +316,63 @@ class Orchestrator:
         memory_context = self._build_memory_context()
         if memory_context:
             messages.insert(1, {"role": "system", "content": memory_context})
+        if self.tool_registry:
+            tool_list = json.dumps(self.tool_registry.list_specs(), ensure_ascii=False)
+            messages.insert(
+                1,
+                {
+                    "role": "system",
+                    "content": (
+                        "Ferramentas disponiveis (use apenas se necessário). "
+                        "Se precisar executar uma acao, responda SOMENTE com:\n"
+                        "<tool_call>{\"name\":\"NOME\",\"args\":{...}}</tool_call>\n"
+                        f"Ferramentas: {tool_list}"
+                    ),
+                },
+            )
         return messages
+
+    def _extract_tool_call(self, response: str) -> Optional[ToolCall]:
+        if not response:
+            return None
+        match = re.search(r"<tool_call>(.*?)</tool_call>", response, re.DOTALL)
+        raw = match.group(1).strip() if match else response.strip()
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        name = payload.get("name")
+        if not name:
+            return None
+        args = payload.get("args") or {}
+        if not isinstance(args, dict):
+            args = {}
+        return ToolCall(name=name, args=args)
+
+    def _execute_tool_call(self, call: ToolCall, interactive: bool) -> str:
+        if not self.tool_registry or not self.tool_policy:
+            return tool_result_to_message(call.name, ToolResult(ok=False, error="Ferramentas nao configuradas."))
+        policy = ToolPolicy(
+            allowlist=self.tool_policy.allowlist,
+            require_approval=self.tool_policy.require_approval,
+            auto_approve=self.tool_policy.auto_approve,
+            interactive=interactive,
+        )
+        result = execute_tool(call, self.tool_registry, policy, log_path=self.tool_log_path)
+        return tool_result_to_message(call.name, result)
+
+    def run_tool_loop(self, response: str, interactive: bool) -> str:
+        attempts = 0
+        while attempts < self._max_tool_calls and self.tool_registry:
+            call = self._extract_tool_call(response)
+            if not call:
+                return response
+            self._add_message("assistant", response)
+            tool_message = self._execute_tool_call(call, interactive=interactive)
+            self._add_message("system", f"[TOOL_RESULT]{tool_message}")
+            response = self.llm.chat(self._build_llm_messages())
+            attempts += 1
+        return response
 
     def _call_model(self) -> Optional[str]:
         try:
@@ -362,7 +434,7 @@ class Orchestrator:
             response = self._call_model()
             if response is None:
                 continue
-
+            response = self.run_tool_loop(response, interactive=True)
             self._add_message("assistant", response)
             self.turn_count += 1
 

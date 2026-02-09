@@ -10,3 +10,5 @@ sounddevice
 numpy
 edge-tts
 playsound
+pyautogui
+mss

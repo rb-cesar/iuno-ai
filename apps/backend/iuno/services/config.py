@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from typing import Iterable, Optional
 
+from iuno.tools import ToolPolicy, ToolRegistry, default_tools
+from iuno.tools.policy import normalize_allowlist, parse_allowlist
 from iuno.voice.base import AudioRecorder, SpeechToText, TextToSpeech, VoiceConfig
 
 _TRUE_VALUES = {"1", "true", "yes", "y", "on"}
@@ -82,6 +84,25 @@ def project_root() -> Path:
 def resolve_audio_dir() -> str:
     default_audio_dir = project_root() / "data" / "audio"
     return env_str("IUNO_AUDIO_DIR", str(default_audio_dir))
+
+
+def resolve_action_log_path() -> str:
+    return env_str("IUNO_ACTION_LOG", "action_log.jsonl")
+
+
+def build_tool_registry() -> ToolRegistry:
+    return ToolRegistry(default_tools())
+
+
+def build_tool_policy(interactive: bool = False) -> ToolPolicy:
+    allowlist = parse_allowlist(env_optional_str("IUNO_TOOLS_ALLOWLIST"))
+    allowlist = normalize_allowlist(allowlist)
+    return ToolPolicy(
+        allowlist=allowlist,
+        require_approval=env_flag("IUNO_TOOLS_REQUIRE_APPROVAL", True),
+        auto_approve=env_flag("IUNO_TOOLS_AUTO_APPROVE", False),
+        interactive=interactive,
+    )
 
 
 def build_voice_config() -> VoiceConfig:
